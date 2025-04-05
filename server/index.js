@@ -50,12 +50,13 @@ const MAX_RETRIES = 3;
 async function connectDB() {
   try {
     console.log('Connecting to MongoDB Atlas...');
+    
+    // Configure mongoose
+    mongoose.set('strictQuery', true);
+    
+    // Connect with minimal options
     await mongoose.connect(mongoUri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
       serverSelectionTimeoutMS: 5000,
-      maxPoolSize: 10,
-      minPoolSize: 5,
       socketTimeoutMS: 45000,
       connectTimeoutMS: 10000
     });
@@ -64,27 +65,33 @@ async function connectDB() {
     
     // Test the connection
     const db = mongoose.connection;
-    console.log('Database name:', db.name);
-    
-    // Log available collections
-    const collections = await db.db.listCollections().toArray();
-    console.log('Available collections:', collections.map(c => c.name));
+    console.log('Connected to database:', db.name);
     
     // Set up connection event handlers
     db.on('error', (err) => {
       console.error('MongoDB connection error:', err);
+      if (err.name === 'MongoServerError' && err.code === 8000) {
+        console.error('Authentication failed. Please check your MongoDB Atlas credentials.');
+        console.error('Make sure:');
+        console.error('1. Username and password are correct');
+        console.error('2. User has access to the database');
+        console.error('3. IP address is whitelisted in MongoDB Atlas');
+      }
     });
     
     db.on('disconnected', () => {
       console.log('MongoDB disconnected. Attempting to reconnect...');
-      connectDB().catch(err => console.error('Reconnection failed:', err));
+      if (retryCount < MAX_RETRIES) {
+        connectDB().catch(err => console.error('Reconnection failed:', err));
+      }
     });
     
     db.on('reconnected', () => {
       console.log('MongoDB reconnected successfully');
+      retryCount = 0; // Reset retry count on successful reconnection
     });
     
-    return mongoose.connection;
+    return db;
   } catch (error) {
     console.error('Error connecting to MongoDB Atlas:', {
       name: error.name,
@@ -93,12 +100,14 @@ async function connectDB() {
       codeName: error.codeName
     });
     
-    if (error.name === 'MongoServerSelectionError') {
-      console.error('Could not connect to MongoDB Atlas. Please check:');
-      console.error('1. Your internet connection');
-      console.error('2. MongoDB Atlas cluster status');
-      console.error('3. IP whitelist settings');
-      console.error('4. Database user credentials');
+    if (error.name === 'MongoServerError' && error.code === 8000) {
+      console.error('\nAuthentication failed. Please check:');
+      console.error('1. Your MongoDB Atlas username and password are correct');
+      console.error('2. The user has the correct permissions');
+      console.error('3. Your IP address is whitelisted in MongoDB Atlas');
+      console.error('4. The connection string format is correct');
+      console.error('\nCurrent connection string format:');
+      console.error('mongodb+srv://<username>:<password>@<cluster>.mongodb.net/<database>?retryWrites=true&w=majority');
     }
     
     if (retryCount < MAX_RETRIES) {

@@ -5,32 +5,56 @@ const userSchema = new mongoose.Schema({
   name: {
     type: String,
     required: [true, 'Name is required'],
-    trim: true
+    trim: true,
+    minlength: [2, 'Name must be at least 2 characters long'],
+    maxlength: [50, 'Name cannot be more than 50 characters']
   },
   building: {
     type: String,
     required: [true, 'Building is required'],
-    trim: true
+    trim: true,
+    uppercase: true,
+    validate: {
+      validator: function(v) {
+        // Allow any non-empty string after trimming
+        return v && v.trim().length > 0;
+      },
+      message: 'Building name cannot be empty'
+    }
   },
   floor: {
     type: String,
     required: [true, 'Floor is required'],
-    trim: true
+    trim: true,
+    validate: {
+      validator: function(v) {
+        return v && v.trim().length > 0;
+      },
+      message: 'Floor cannot be empty'
+    }
   },
   flat: {
     type: String,
-    required: [true, 'Flat is required'],
-    trim: true
+    required: [true, 'Flat number is required'],
+    trim: true,
+    uppercase: true,
+    validate: {
+      validator: function(v) {
+        return v && v.trim().length > 0;
+      },
+      message: 'Flat number cannot be empty'
+    }
   },
   phone: {
     type: String,
     required: [true, 'Phone number is required'],
     unique: true,
+    trim: true,
     validate: {
       validator: function(v) {
         return /^\d{10}$/.test(v);
       },
-      message: props => `${props.value} is not a valid phone number!`
+      message: 'Please enter a valid 10-digit phone number'
     }
   },
   password: {
@@ -40,7 +64,13 @@ const userSchema = new mongoose.Schema({
   },
   code: {
     type: String,
-    required: true
+    required: true,
+    default: function() {
+      if (this.building && this.flat) {
+        return `${this.building}${this.flat}`.toUpperCase();
+      }
+      return undefined;
+    }
   }
 }, {
   timestamps: true
@@ -59,10 +89,11 @@ userSchema.pre('save', async function(next) {
   }
 });
 
-// Generate user code before saving
+// Update code when building or flat changes
 userSchema.pre('save', function(next) {
-  if (!this.isModified('building') && !this.isModified('flat')) return next();
-  this.code = `${this.building}${this.flat}`;
+  if (this.isModified('building') || this.isModified('flat')) {
+    this.code = `${this.building}${this.flat}`.toUpperCase();
+  }
   next();
 });
 

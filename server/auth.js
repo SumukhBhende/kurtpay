@@ -26,17 +26,67 @@ const verifyToken = (req, res, next) => {
 
 // Register endpoint
 router.post('/register', async (req, res) => {
-  console.log('Received registration request:', {
+  console.log('\n=== Registration Request ===');
+  console.log('Raw request body:', {
     ...req.body,
     password: req.body.password ? '[HIDDEN]' : undefined
   });
 
   try {
+    // Transform building to uppercase before creating user
+    const userData = {
+      ...req.body,
+      building: req.body.building?.toString().trim().toUpperCase(),
+      flat: req.body.flat?.toString().trim().toUpperCase(),
+      floor: req.body.floor?.toString().trim(),
+      name: req.body.name?.toString().trim(),
+      phone: req.body.phone?.toString().trim()
+    };
+
+    console.log('\nTransformed user data:', {
+      ...userData,
+      password: userData.password ? '[HIDDEN]' : undefined
+    });
+
     // Create new user
-    const user = new User(req.body);
+    const user = new User(userData);
+    
+    // Validate the user data
+    const validationError = user.validateSync();
+    if (validationError) {
+      console.log('\nValidation Errors:');
+      const errors = Object.values(validationError.errors).map(err => {
+        console.log(`- Field: ${err.path}`);
+        console.log(`  Value: ${err.value}`);
+        console.log(`  Message: ${err.message}`);
+        return {
+          field: err.path,
+          message: err.message,
+          value: err.value
+        };
+      });
+      
+      return res.status(400).json({ 
+        message: 'Validation failed',
+        errors 
+      });
+    }
+    
+    // Additional validation logging
+    console.log('\nPre-save validation passed');
+    console.log('Generated code:', user.code);
+    
+    // Save the user
     await user.save();
 
-    console.log('User registered successfully:', user._id);
+    console.log('\nUser registered successfully:', {
+      userId: user._id,
+      code: user.code,
+      building: user.building,
+      flat: user.flat,
+      name: user.name,
+      floor: user.floor
+    });
 
     res.status(201).json({ 
       success: true,
@@ -44,11 +94,27 @@ router.post('/register', async (req, res) => {
       userId: user._id 
     });
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error('\nRegistration Error:', {
+      name: error.name,
+      message: error.message,
+      code: error.code,
+      errors: error.errors
+    });
     
     // Handle validation errors
     if (error.name === 'ValidationError') {
-      const errors = Object.values(error.errors).map(err => err.message);
+      console.log('\nValidation Error Details:');
+      const errors = Object.values(error.errors).map(err => {
+        console.log(`- Field: ${err.path}`);
+        console.log(`  Value: ${err.value}`);
+        console.log(`  Message: ${err.message}`);
+        return {
+          field: err.path,
+          message: err.message,
+          value: err.value
+        };
+      });
+      
       return res.status(400).json({ 
         message: 'Validation failed',
         errors 
@@ -58,7 +124,11 @@ router.post('/register', async (req, res) => {
     // Handle duplicate key error (unique phone number)
     if (error.code === 11000) {
       return res.status(400).json({ 
-        message: 'Phone number already registered' 
+        message: 'Phone number already registered',
+        errors: [{
+          field: 'phone',
+          message: 'This phone number is already registered'
+        }]
       });
     }
 
