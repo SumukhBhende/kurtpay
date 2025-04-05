@@ -18,7 +18,7 @@ const FeatureCard = ({ icon, title, content, index }) => (
   </div>
 );
 
-const Business = () =>  (
+const Business = ({ onAuthClick }) =>  (
   <section id="features" className={layout.section}>
     <div className={layout.sectionInfo}>
       <h2 className={styles.heading2}>
@@ -29,7 +29,7 @@ const Business = () =>  (
         You can also track your bills and manage your bills online.
       </p>
 
-      <Button styles={`mt-10`} />
+      <Button styles={`mt-10`} onClick={() => onAuthClick('register')} />
     </div>
 
     <div className={`${layout.sectionImg} flex-col`}>

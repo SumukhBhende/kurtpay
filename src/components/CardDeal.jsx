@@ -2,7 +2,7 @@ import { card } from "../assets";
 import styles, { layout } from "../style";
 import Button from "./Button";
 
-const CardDeal = () => (
+const CardDeal = ({ onAuthClick }) => (
   <section className={layout.section}>
     <div className={layout.sectionInfo}>
       <h2 className={styles.heading2}>
@@ -14,7 +14,7 @@ const CardDeal = () => (
         You can also track your bills and manage your bills online.
       </p>
 
-      <Button styles={`mt-10`} />
+      <Button styles={`mt-10`} onClick={() => onAuthClick('register')} />
     </div>
 
     <div className={layout.sectionImg}>

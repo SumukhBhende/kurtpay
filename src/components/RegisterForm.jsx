@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import styles from '../style';
 
 const RegisterForm = () => {
   const [formData, setFormData] = useState({
@@ -8,11 +9,10 @@ const RegisterForm = () => {
     floor: '',
     flat: '',
     phone: '',
-    password: '',
-    confirmPassword: ''
+    password: ''
   });
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
@@ -25,45 +25,38 @@ const RegisterForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(null);
+    setError('');
+    setSuccess('');
     setLoading(true);
 
-    // Basic validation
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords don't match");
-      setLoading(false);
-      return;
-    }
-
-    if (formData.phone.length !== 10) {
-      setError("Phone number must be 10 digits");
-      setLoading(false);
-      return;
-    }
-
     try {
-      // Generate code from building and flat
-      const code = `${formData.building}${formData.flat}`;
-      
-      const response = await axios.post('http://localhost:4242/api/register', {
-        ...formData,
-        code
-      });
-
-      if (response.data.success) {
-        setSuccess(true);
-        setFormData({
-          name: '',
-          building: '',
-          floor: '',
-          flat: '',
-          phone: '',
-          password: '',
-          confirmPassword: ''
-        });
+      // Validate form data
+      if (!formData.name || !formData.building || !formData.floor || 
+          !formData.flat || !formData.phone || !formData.password) {
+        throw new Error('All fields are required');
       }
+
+      if (formData.phone.length !== 10 || !/^\d+$/.test(formData.phone)) {
+        throw new Error('Phone number must be 10 digits');
+      }
+
+      console.log('Sending registration data:', { ...formData, password: '[HIDDEN]' });
+
+      const response = await axios.post('http://localhost:4242/api/register', formData);
+      console.log('Registration response:', response.data);
+
+      setSuccess('Registration successful! You can now login.');
+      setFormData({
+        name: '',
+        building: '',
+        floor: '',
+        flat: '',
+        phone: '',
+        password: ''
+      });
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed');
+      console.error('Registration error:', err);
+      setError(err.response?.data?.message || err.message || 'Registration failed');
     } finally {
       setLoading(false);
     }
@@ -75,11 +68,24 @@ const RegisterForm = () => {
         <h2 className="font-poppins font-semibold xs:text-[48px] text-[40px] text-white xs:leading-[76.8px] leading-[66.8px] w-full text-center mb-10">
           Register
         </h2>
-        <div className="bg-black-gradient-2 rounded-[20px] p-8 w-full max-w-md">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <label className="block text-lg font-medium text-dimWhite">
-                Full Name
+
+        <form onSubmit={handleSubmit} className="w-full max-w-md bg-black-gradient-2 rounded-[20px] p-8">
+          {error && (
+            <div className="text-red-500 text-sm bg-red-900/20 p-3 rounded-[10px] mb-4">
+              {error}
+            </div>
+          )}
+
+          {success && (
+            <div className="text-green-400 text-sm bg-green-900/20 p-3 rounded-[10px] mb-4">
+              {success}
+            </div>
+          )}
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-lg font-medium text-dimWhite mb-2">
+                Name
               </label>
               <input
                 type="text"
@@ -91,8 +97,8 @@ const RegisterForm = () => {
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="block text-lg font-medium text-dimWhite">
+            <div>
+              <label className="block text-lg font-medium text-dimWhite mb-2">
                 Building
               </label>
               <input
@@ -105,8 +111,8 @@ const RegisterForm = () => {
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="block text-lg font-medium text-dimWhite">
+            <div>
+              <label className="block text-lg font-medium text-dimWhite mb-2">
                 Floor
               </label>
               <input
@@ -119,9 +125,9 @@ const RegisterForm = () => {
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="block text-lg font-medium text-dimWhite">
-                Flat Number
+            <div>
+              <label className="block text-lg font-medium text-dimWhite mb-2">
+                Flat
               </label>
               <input
                 type="text"
@@ -133,8 +139,8 @@ const RegisterForm = () => {
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="block text-lg font-medium text-dimWhite">
+            <div>
+              <label className="block text-lg font-medium text-dimWhite mb-2">
                 Phone Number
               </label>
               <input
@@ -148,8 +154,8 @@ const RegisterForm = () => {
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="block text-lg font-medium text-dimWhite">
+            <div>
+              <label className="block text-lg font-medium text-dimWhite mb-2">
                 Password
               </label>
               <input
@@ -162,45 +168,19 @@ const RegisterForm = () => {
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="block text-lg font-medium text-dimWhite">
-                Confirm Password
-              </label>
-              <input
-                type="password"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                className="w-full p-3 bg-white/10 border border-dimWhite rounded-[10px] text-white placeholder-gray-400 focus:outline-none focus:border-[#00f6ff]"
-                required
-              />
-            </div>
-
-            {error && (
-              <div className="text-red-500 text-sm bg-red-900/20 p-3 rounded-[10px]">
-                {error}
-              </div>
-            )}
-
             <button
               type="submit"
               disabled={loading}
-              className={`w-full py-3 px-6 rounded-[10px] text-white font-medium text-lg transition-all duration-300 ${
-                loading 
-                  ? 'bg-gray-600 cursor-not-allowed' 
+              className={`w-full py-3 px-6 mt-6 rounded-[10px] text-white font-medium text-lg transition-all duration-300 ${
+                loading
+                  ? 'bg-gray-600 cursor-not-allowed'
                   : 'bg-blue-gradient hover:shadow-lg hover:shadow-blue-500/50'
               }`}
             >
               {loading ? 'Registering...' : 'Register'}
             </button>
-
-            {success && (
-              <div className="text-green-400 text-center bg-green-900/20 p-3 rounded-[10px]">
-                Registration successful! You can now login.
-              </div>
-            )}
-          </form>
-        </div>
+          </div>
+        </form>
       </div>
     </div>
   );

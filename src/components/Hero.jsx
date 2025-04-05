@@ -2,7 +2,7 @@ import styles from "../style";
 import { discount, robot } from "../assets";
 import GetStarted from "./GetStarted";
 
-const Hero = () => {
+const Hero = ({ onAuthClick }) => {
   return (
     <section id="home" className={`flex md:flex-row flex-col ${styles.paddingY}`}>
       <div className={`flex-1 ${styles.flexStart} flex-col xl:px-0 sm:px-16 px-6`}>
@@ -20,7 +20,7 @@ const Hero = () => {
             <span className="text-gradient">Convenient</span>{" "}
           </h1>
           <div className="ss:flex hidden md:mr-4 mr-0">
-            <GetStarted />
+            <GetStarted onClick={() => onAuthClick('register')} />
           </div>
         </div>
 
@@ -44,7 +44,7 @@ const Hero = () => {
       </div>
 
       <div className={`ss:hidden ${styles.flexCenter}`}>
-        <GetStarted />
+        <GetStarted onClick={() => onAuthClick('register')} />
       </div>
     </section>
   );

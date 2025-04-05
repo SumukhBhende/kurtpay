@@ -1,13 +1,12 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { MongoClient, ObjectId } from 'mongodb';
+import { ObjectId } from 'mongodb';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
 const router = express.Router();
-const mongoUri = process.env.MONGODB_URI;
 const dbName = 'ktkar';
 const collectionName = 'maintron';
 
@@ -30,26 +29,57 @@ const verifyToken = (req, res, next) => {
 
 // Register endpoint
 router.post('/register', async (req, res) => {
+  console.log('Received registration request:', {
+    ...req.body,
+    password: req.body.password ? '[HIDDEN]' : undefined
+  });
+
   const { name, building, floor, flat, phone, password } = req.body;
 
+  // Validate required fields
+  if (!name || !building || !floor || !flat || !phone || !password) {
+    console.error('Missing required fields');
+    return res.status(400).json({ 
+      message: 'All fields are required',
+      missing: Object.entries({ name, building, floor, flat, phone, password })
+        .filter(([_, value]) => !value)
+        .map(([key]) => key)
+    });
+  }
+
+  // Validate phone number
+  if (phone.length !== 10 || !/^\d+$/.test(phone)) {
+    console.error('Invalid phone number format');
+    return res.status(400).json({ message: 'Phone number must be 10 digits' });
+  }
+
   try {
-    const client = await MongoClient.connect(mongoUri);
+    console.log('Attempting to connect to database...');
+    const client = req.app.locals.mongoClient;
+    if (!client) {
+      console.error('MongoDB client is not available');
+      return res.status(500).json({ message: 'Database connection error' });
+    }
+
     const db = client.db(dbName);
     const collection = db.collection(collectionName);
 
     // Check if phone number already exists
+    console.log('Checking for existing user with phone:', phone);
     const existingUser = await collection.findOne({ phone });
     if (existingUser) {
-      client.close();
+      console.log('Phone number already registered:', phone);
       return res.status(400).json({ message: 'Phone number already registered' });
     }
 
     // Hash password
+    console.log('Hashing password...');
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
     // Generate user code
     const code = `${building}${flat}`;
+    console.log('Generated user code:', code);
 
     // Create new user
     const newUser = {
@@ -59,15 +89,26 @@ router.post('/register', async (req, res) => {
       flat,
       phone,
       password: hashedPassword,
-      code
+      code,
+      createdAt: new Date()
     };
 
-    await collection.insertOne(newUser);
-    client.close();
+    console.log('Attempting to insert new user...');
+    const result = await collection.insertOne(newUser);
+    console.log('User registered successfully:', result.insertedId);
 
-    res.status(201).json({ message: 'Registration successful' });
+    res.status(201).json({ 
+      success: true,
+      message: 'Registration successful',
+      userId: result.insertedId 
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    console.error('Registration error:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      message: 'Server error during registration',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
@@ -76,21 +117,19 @@ router.post('/login', async (req, res) => {
   const { phone, password } = req.body;
 
   try {
-    const client = await MongoClient.connect(mongoUri);
+    const client = req.app.locals.mongoClient;
     const db = client.db(dbName);
     const collection = db.collection(collectionName);
 
     // Find user by phone
     const user = await collection.findOne({ phone });
     if (!user) {
-      client.close();
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
     // Verify password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      client.close();
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
@@ -104,14 +143,14 @@ router.post('/login', async (req, res) => {
     // Remove password from user object
     const { password: _, ...userWithoutPassword } = user;
 
-    client.close();
     res.json({
       success: true,
       token,
       user: userWithoutPassword
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    console.error('Login error:', error);
+    res.status(500).json({ message: 'Server error during login' });
   }
 });
 
@@ -120,18 +159,17 @@ router.put('/user/profile', verifyToken, async (req, res) => {
   const { name, building, floor, flat, phone } = req.body;
 
   try {
-    const client = await MongoClient.connect(mongoUri);
+    const client = req.app.locals.mongoClient;
     const db = client.db(dbName);
     const collection = db.collection(collectionName);
 
     // Check if phone number is taken by another user
     const existingUser = await collection.findOne({
       phone,
-      _id: { $ne: ObjectId(req.userId) }
+      _id: { $ne: new ObjectId(req.userId) }
     });
 
     if (existingUser) {
-      client.close();
       return res.status(400).json({ message: 'Phone number already taken' });
     }
 
@@ -140,7 +178,7 @@ router.put('/user/profile', verifyToken, async (req, res) => {
 
     // Update user
     const result = await collection.findOneAndUpdate(
-      { _id: ObjectId(req.userId) },
+      { _id: new ObjectId(req.userId) },
       {
         $set: {
           name,
@@ -148,27 +186,27 @@ router.put('/user/profile', verifyToken, async (req, res) => {
           floor,
           flat,
           phone,
-          code
+          code,
+          updatedAt: new Date()
         }
       },
       { returnDocument: 'after' }
     );
 
     if (!result.value) {
-      client.close();
       return res.status(404).json({ message: 'User not found' });
     }
 
     // Remove password from response
     const { password: _, ...userWithoutPassword } = result.value;
 
-    client.close();
     res.json({
       success: true,
       user: userWithoutPassword
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    console.error('Profile update error:', error);
+    res.status(500).json({ message: 'Server error during profile update' });
   }
 });
 
@@ -177,21 +215,19 @@ router.put('/user/password', verifyToken, async (req, res) => {
   const { currentPassword, newPassword } = req.body;
 
   try {
-    const client = await MongoClient.connect(mongoUri);
+    const client = req.app.locals.mongoClient;
     const db = client.db(dbName);
     const collection = db.collection(collectionName);
 
     // Find user
-    const user = await collection.findOne({ _id: ObjectId(req.userId) });
+    const user = await collection.findOne({ _id: new ObjectId(req.userId) });
     if (!user) {
-      client.close();
       return res.status(404).json({ message: 'User not found' });
     }
 
     // Verify current password
     const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch) {
-      client.close();
       return res.status(400).json({ message: 'Current password is incorrect' });
     }
 
@@ -201,14 +237,19 @@ router.put('/user/password', verifyToken, async (req, res) => {
 
     // Update password
     await collection.updateOne(
-      { _id: ObjectId(req.userId) },
-      { $set: { password: hashedPassword } }
+      { _id: new ObjectId(req.userId) },
+      { 
+        $set: { 
+          password: hashedPassword,
+          updatedAt: new Date()
+        } 
+      }
     );
 
-    client.close();
     res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    console.error('Password update error:', error);
+    res.status(500).json({ message: 'Server error during password update' });
   }
 });
 

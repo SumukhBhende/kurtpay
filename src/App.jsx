@@ -75,19 +75,19 @@ const App = () => {
         <>
           <div className={`bg-primary ${styles.flexStart}`}>
             <div className={`${styles.boxWidth}`}>
-              <Hero />
+              <Hero onAuthClick={handleAuthClick} />
             </div>
           </div>
           
           <div className={`bg-primary ${styles.paddingX} ${styles.flexCenter}`}>
             <div className={`${styles.boxWidth}`}>
               <Stats />
-              <Business />
+              <Business onAuthClick={handleAuthClick} />
               <Billing />
-              <CardDeal />
+              <CardDeal onAuthClick={handleAuthClick} />
               <Testimonials />
               <Clients />
-              <CTA />
+              <CTA onAuthClick={handleAuthClick} />
               <Footer />
             </div>
           </div>
