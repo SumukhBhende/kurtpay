@@ -1,5 +1,4 @@
 import express from 'express';
-import bodyParser from 'body-parser';
 import cors from 'cors';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
@@ -26,7 +25,7 @@ app.use(cors({
 }));
 
 // Parse JSON bodies
-app.use(bodyParser.json());
+app.use(express.json());
 
 // Security headers
 app.use((req, res, next) => {
