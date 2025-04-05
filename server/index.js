@@ -1,0 +1,77 @@
+import express from 'express';
+import bodyParser from 'body-parser';
+import cors from 'cors';
+import Razorpay from 'razorpay';
+import crypto from 'crypto';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const app = express();
+
+// Initialize Razorpay
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
+
+// Security middleware
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  methods: ['POST', 'GET'],
+  credentials: true
+}));
+
+// Parse JSON bodies
+app.use(bodyParser.json());
+
+// Security headers
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  next();
+});
+
+// Create order endpoint
+app.post('/create-order', async (req, res) => {
+  try {
+    const { amount, currency = 'INR' } = req.body;
+
+    const options = {
+      amount: amount * 100, // amount in smallest currency unit (paise)
+      currency,
+      receipt: `order_${Date.now()}`,
+    };
+
+    const order = await razorpay.orders.create(options);
+    res.json(order);
+  } catch (error) {
+    console.error('Error creating order:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Verify payment endpoint
+app.post('/verify-payment', async (req, res) => {
+  const { order_id, payment_id, signature } = req.body;
+
+  const expectedSignature = crypto
+    .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+    .update(`${order_id}|${payment_id}`)
+    .digest('hex');
+
+  if (expectedSignature === signature) {
+    // Payment is successful
+    res.json({ success: true, message: 'Payment verified successfully' });
+  } else {
+    // Payment verification failed
+    res.status(400).json({ success: false, message: 'Payment verification failed' });
+  }
+});
+
+const PORT = process.env.PORT || 4242;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+}); 
