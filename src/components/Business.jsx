@@ -22,7 +22,7 @@ const Business = () =>  (
   <section id="features" className={layout.section}>
     <div className={layout.sectionInfo}>
       <h2 className={styles.heading2}>
-        Save your Energy and Time, <br className="sm:block hidden" /> Pay the bills from anywhere and anytime
+        Save Energy and Time, <br className="sm:block hidden" /> Pay the bills from anywhere online
       </h2>
       <p className={`${styles.paragraph} max-w-[470px] mt-5`}>
         Pay your bills online and get a generated receipt for your paid bills.
