@@ -23,9 +23,9 @@ export const features = [
   {
     id: "feature-1",
     icon: star,
-    title: "Rewards",
+    title: "Convenient",
     content:
-      "The best credit cards offer some tantalizing combinations of promotions and prizes",
+      "Pay your bills online and get a 100% hassle free experience.",
   },
   {
     id: "feature-2",
@@ -37,9 +37,9 @@ export const features = [
   {
     id: "feature-3",
     icon: send,
-    title: "Balance Transfer",
+    title: "Smart",
     content:
-      "A balance transfer credit card can save you a lot of money in interest charges.",
+      "Manage and Track your maintanance Bills.",
   },
 ];
 

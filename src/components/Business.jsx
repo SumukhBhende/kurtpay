@@ -22,13 +22,11 @@ const Business = () =>  (
   <section id="features" className={layout.section}>
     <div className={layout.sectionInfo}>
       <h2 className={styles.heading2}>
-        You do the business, <br className="sm:block hidden" /> we’ll handle
-        the money.
+        Save your Energy and Time, <br className="sm:block hidden" /> Pay the bills from anywhere and anytime
       </h2>
       <p className={`${styles.paragraph} max-w-[470px] mt-5`}>
-        With the right credit card, you can improve your financial life by
-        building credit, earning rewards and saving money. But with hundreds
-        of credit cards on the market.
+        Pay your bills online and get a generated receipt for your paid bills.
+        You can also track your bills and manage your bills online.
       </p>
 
       <Button styles={`mt-10`} />

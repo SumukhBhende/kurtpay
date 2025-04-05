@@ -6,12 +6,12 @@ const CardDeal = () => (
   <section className={layout.section}>
     <div className={layout.sectionInfo}>
       <h2 className={styles.heading2}>
-        Find a better card deal <br className="sm:block hidden" /> in few easy
+        Register yourself <br className="sm:block hidden" /> in few easy
         steps.
       </h2>
       <p className={`${styles.paragraph} max-w-[470px] mt-5`}>
-        Arcu tortor, purus in mattis at sed integer faucibus. Aliquet quis
-        aliquet eget mauris tortor.ç Aliquet ultrices ac, ametau.
+        Once you register, you can pay your bills online and get a generated receipt for your paid bills.
+        You can also track your bills and manage your bills online.
       </p>
 
       <Button styles={`mt-10`} />
