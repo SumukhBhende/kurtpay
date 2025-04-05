@@ -4,6 +4,7 @@ import cors from 'cors';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
+import authRouter from './auth.js';
 
 dotenv.config();
 
@@ -33,6 +34,9 @@ app.use((req, res, next) => {
   res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   next();
 });
+
+// Routes
+app.use('/api', authRouter);
 
 // Create order endpoint
 app.post('/create-order', async (req, res) => {
@@ -71,7 +75,7 @@ app.post('/verify-payment', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 4242;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+const port = process.env.PORT || 4242;
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 }); 
