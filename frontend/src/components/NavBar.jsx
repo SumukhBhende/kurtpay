@@ -3,7 +3,7 @@ import { useState } from "react";
 import { close, logo, menu } from "../assets";
 import { navLinks } from "../constants";
 
-const Navbar = ({ onAuthClick, userData, onNavigate }) => {
+const NavBar = ({ onAuthClick, userData, onNavigate }) => {
   const [active, setActive] = useState("Home");
   const [toggle, setToggle] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -27,7 +27,7 @@ const Navbar = ({ onAuthClick, userData, onNavigate }) => {
   };
 
   return (
-    <nav className="w-full flex py-6 justify-between items-center navbar">
+    <nav className="w-full flex py-6 justify-between items-center NavBar">
       <img 
         src={logo} 
         alt="kurtpay" 
@@ -186,4 +186,4 @@ const Navbar = ({ onAuthClick, userData, onNavigate }) => {
   );
 };
 
-export default Navbar;
+export default NavBar;

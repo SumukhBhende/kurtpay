@@ -1,5 +1,5 @@
 import styles from "./style";
-import Navbar from "./components/Navbar";
+import NavBar from "./components/NavBar";
 import Billing from "./components/Billing";
 import Business from "./components/Business";
 import CardDeal from "./components/CardDeal";
@@ -76,7 +76,7 @@ const App = () => {
     <div className="bg-primary w-full overflow-hidden">
       <div className={`${styles.paddingX} ${styles.flexCenter}`}>
         <div className={`${styles.boxWidth}`}>
-          <Navbar onAuthClick={handleAuthClick} userData={userData} onNavigate={handleNavigation} />
+          <NavBar onAuthClick={handleAuthClick} userData={userData} onNavigate={handleNavigation} />
         </div>
       </div>
 
