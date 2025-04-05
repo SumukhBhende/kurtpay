@@ -37,6 +37,10 @@ app.use((req, res, next) => {
   next();
 });
 
+app.get("/",(req,res)=>{
+  res.status(200).json({status:"Server running..."})
+})
+
 // MongoDB Connection
 const mongoUri = process.env.MONGODB_URI;
 if (!mongoUri) {
