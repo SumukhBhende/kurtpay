@@ -42,7 +42,7 @@ const RegisterForm = () => {
 
       console.log('Sending registration data:', { ...formData, password: '[HIDDEN]' });
 
-      const response = await axios.post('http://localhost:4242/api/register', formData);
+      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/register`, formData);
       console.log('Registration response:', response.data);
 
       setSuccess('Registration successful! You can now login.');

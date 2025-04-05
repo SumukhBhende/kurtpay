@@ -26,7 +26,7 @@ const LoginForm = ({ onConfirm }) => {
     setUserData(null);
 
     try {
-      const response = await axios.post('http://localhost:4242/api/login', formData);
+      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/login`, formData);
 
       if (response.data.success) {
         setUserData(response.data.user);

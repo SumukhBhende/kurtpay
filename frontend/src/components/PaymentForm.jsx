@@ -25,7 +25,7 @@ const PaymentForm = () => {
       setError(null);
 
       // Create order on backend
-      const { data: order } = await axios.post('http://localhost:4242/create-order', {
+      const { data: order } = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/create-order`, {
         amount,
         currency: 'INR'
       });
@@ -40,7 +40,7 @@ const PaymentForm = () => {
         handler: async function (response) {
           try {
             // Verify payment on backend
-            const verifyResponse = await axios.post('http://localhost:4242/verify-payment', {
+            const verifyResponse = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/verify-payment`, {
               order_id: response.razorpay_order_id,
               payment_id: response.razorpay_payment_id,
               signature: response.razorpay_signature

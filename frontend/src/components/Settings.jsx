@@ -44,7 +44,7 @@ const Settings = ({ userData, onUpdateUser }) => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.put(
-        'http://localhost:4242/api/user/profile',
+        `${import.meta.env.VITE_BACKEND_URL}/api/user/profile`,
         profileData,
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -80,7 +80,7 @@ const Settings = ({ userData, onUpdateUser }) => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.put(
-        'http://localhost:4242/api/user/password',
+        `${import.meta.env.VITE_BACKEND_URL}/api/user/password`,
         {
           currentPassword: passwordData.currentPassword,
           newPassword: passwordData.newPassword
