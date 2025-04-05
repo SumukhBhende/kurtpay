@@ -1,5 +1,14 @@
 import styles from "./style";
-import { Billing, Business, CardDeal, Clients, CTA, Footer, Navbar, Stats, Testimonials, Hero } from "./components";
+import Navbar from "./components/Navbar";
+import Billing from "./components/Billing";
+import Business from "./components/Business";
+import CardDeal from "./components/CardDeal";
+import Clients from "./components/Clients";
+import CTA from "./components/CTA";
+import Footer from "./components/Footer";
+import Stats from "./components/Stats";
+import Testimonials from "./components/Testimonials";
+import Hero from "./components/Hero";
 import RegisterForm from "./components/RegisterForm";
 import LoginForm from "./components/LoginForm";
 import Settings from "./components/Settings";
