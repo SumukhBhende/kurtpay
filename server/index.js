@@ -49,23 +49,44 @@ const MAX_RETRIES = 3;
 
 async function connectDB() {
   try {
-    console.log('Connecting to MongoDB...');
+    console.log('Connecting to MongoDB Atlas...');
     await mongoose.connect(mongoUri, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-      serverSelectionTimeoutMS: 5000
+      serverSelectionTimeoutMS: 5000,
+      maxPoolSize: 10,
+      minPoolSize: 5,
+      socketTimeoutMS: 45000,
+      connectTimeoutMS: 10000
     });
     
-    console.log('Successfully connected to MongoDB');
+    console.log('Successfully connected to MongoDB Atlas');
     
     // Test the connection
     const db = mongoose.connection;
     console.log('Database name:', db.name);
-    console.log('Collections:', await db.db.listCollections().toArray());
+    
+    // Log available collections
+    const collections = await db.db.listCollections().toArray();
+    console.log('Available collections:', collections.map(c => c.name));
+    
+    // Set up connection event handlers
+    db.on('error', (err) => {
+      console.error('MongoDB connection error:', err);
+    });
+    
+    db.on('disconnected', () => {
+      console.log('MongoDB disconnected. Attempting to reconnect...');
+      connectDB().catch(err => console.error('Reconnection failed:', err));
+    });
+    
+    db.on('reconnected', () => {
+      console.log('MongoDB reconnected successfully');
+    });
     
     return mongoose.connection;
   } catch (error) {
-    console.error('Error connecting to MongoDB:', {
+    console.error('Error connecting to MongoDB Atlas:', {
       name: error.name,
       message: error.message,
       code: error.code,
@@ -73,13 +94,18 @@ async function connectDB() {
     });
     
     if (error.name === 'MongoServerSelectionError') {
-      console.error('Could not connect to MongoDB. Please make sure MongoDB is running.');
+      console.error('Could not connect to MongoDB Atlas. Please check:');
+      console.error('1. Your internet connection');
+      console.error('2. MongoDB Atlas cluster status');
+      console.error('3. IP whitelist settings');
+      console.error('4. Database user credentials');
     }
     
     if (retryCount < MAX_RETRIES) {
       retryCount++;
-      console.log(`Retrying connection (${retryCount}/${MAX_RETRIES})...`);
-      await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+      const delay = Math.min(1000 * Math.pow(2, retryCount), 30000); // Exponential backoff
+      console.log(`Retrying connection (${retryCount}/${MAX_RETRIES}) in ${delay/1000} seconds...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
       return connectDB();
     }
     
