@@ -1,14 +1,11 @@
 import express from 'express';
-import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { ObjectId } from 'mongodb';
+import User from './models/User.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
 const router = express.Router();
-const dbName = 'ktkar';
-const collectionName = 'maintron';
 
 // Middleware to verify JWT token
 const verifyToken = (req, res, next) => {
@@ -34,77 +31,37 @@ router.post('/register', async (req, res) => {
     password: req.body.password ? '[HIDDEN]' : undefined
   });
 
-  const { name, building, floor, flat, phone, password } = req.body;
-
-  // Validate required fields
-  if (!name || !building || !floor || !flat || !phone || !password) {
-    console.error('Missing required fields');
-    return res.status(400).json({ 
-      message: 'All fields are required',
-      missing: Object.entries({ name, building, floor, flat, phone, password })
-        .filter(([_, value]) => !value)
-        .map(([key]) => key)
-    });
-  }
-
-  // Validate phone number
-  if (phone.length !== 10 || !/^\d+$/.test(phone)) {
-    console.error('Invalid phone number format');
-    return res.status(400).json({ message: 'Phone number must be 10 digits' });
-  }
-
   try {
-    console.log('Attempting to connect to database...');
-    const client = req.app.locals.mongoClient;
-    if (!client) {
-      console.error('MongoDB client is not available');
-      return res.status(500).json({ message: 'Database connection error' });
-    }
-
-    const db = client.db(dbName);
-    const collection = db.collection(collectionName);
-
-    // Check if phone number already exists
-    console.log('Checking for existing user with phone:', phone);
-    const existingUser = await collection.findOne({ phone });
-    if (existingUser) {
-      console.log('Phone number already registered:', phone);
-      return res.status(400).json({ message: 'Phone number already registered' });
-    }
-
-    // Hash password
-    console.log('Hashing password...');
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    // Generate user code
-    const code = `${building}${flat}`;
-    console.log('Generated user code:', code);
-
     // Create new user
-    const newUser = {
-      name,
-      building,
-      floor,
-      flat,
-      phone,
-      password: hashedPassword,
-      code,
-      createdAt: new Date()
-    };
+    const user = new User(req.body);
+    await user.save();
 
-    console.log('Attempting to insert new user...');
-    const result = await collection.insertOne(newUser);
-    console.log('User registered successfully:', result.insertedId);
+    console.log('User registered successfully:', user._id);
 
     res.status(201).json({ 
       success: true,
       message: 'Registration successful',
-      userId: result.insertedId 
+      userId: user._id 
     });
   } catch (error) {
     console.error('Registration error:', error);
-    console.error('Error stack:', error.stack);
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({ 
+        message: 'Validation failed',
+        errors 
+      });
+    }
+
+    // Handle duplicate key error (unique phone number)
+    if (error.code === 11000) {
+      return res.status(400).json({ 
+        message: 'Phone number already registered' 
+      });
+    }
+
     res.status(500).json({ 
       message: 'Server error during registration',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -117,18 +74,14 @@ router.post('/login', async (req, res) => {
   const { phone, password } = req.body;
 
   try {
-    const client = req.app.locals.mongoClient;
-    const db = client.db(dbName);
-    const collection = db.collection(collectionName);
-
     // Find user by phone
-    const user = await collection.findOne({ phone });
+    const user = await User.findOne({ phone });
     if (!user) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
     // Verify password
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
@@ -140,13 +93,10 @@ router.post('/login', async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    // Remove password from user object
-    const { password: _, ...userWithoutPassword } = user;
-
     res.json({
       success: true,
       token,
-      user: userWithoutPassword
+      user: user.toJSON()
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -156,56 +106,39 @@ router.post('/login', async (req, res) => {
 
 // Update profile endpoint
 router.put('/user/profile', verifyToken, async (req, res) => {
-  const { name, building, floor, flat, phone } = req.body;
-
   try {
-    const client = req.app.locals.mongoClient;
-    const db = client.db(dbName);
-    const collection = db.collection(collectionName);
-
-    // Check if phone number is taken by another user
-    const existingUser = await collection.findOne({
-      phone,
-      _id: { $ne: new ObjectId(req.userId) }
-    });
-
-    if (existingUser) {
-      return res.status(400).json({ message: 'Phone number already taken' });
-    }
-
-    // Generate new code
-    const code = `${building}${flat}`;
-
-    // Update user
-    const result = await collection.findOneAndUpdate(
-      { _id: new ObjectId(req.userId) },
-      {
-        $set: {
-          name,
-          building,
-          floor,
-          flat,
-          phone,
-          code,
-          updatedAt: new Date()
-        }
-      },
-      { returnDocument: 'after' }
-    );
-
-    if (!result.value) {
+    const user = await User.findById(req.userId);
+    if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Remove password from response
-    const { password: _, ...userWithoutPassword } = result.value;
+    // Update user fields
+    Object.assign(user, req.body);
+    await user.save();
 
     res.json({
       success: true,
-      user: userWithoutPassword
+      user: user.toJSON()
     });
   } catch (error) {
     console.error('Profile update error:', error);
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({ 
+        message: 'Validation failed',
+        errors 
+      });
+    }
+
+    // Handle duplicate key error (unique phone number)
+    if (error.code === 11000) {
+      return res.status(400).json({ 
+        message: 'Phone number already taken' 
+      });
+    }
+
     res.status(500).json({ message: 'Server error during profile update' });
   }
 });
@@ -215,36 +148,20 @@ router.put('/user/password', verifyToken, async (req, res) => {
   const { currentPassword, newPassword } = req.body;
 
   try {
-    const client = req.app.locals.mongoClient;
-    const db = client.db(dbName);
-    const collection = db.collection(collectionName);
-
-    // Find user
-    const user = await collection.findOne({ _id: new ObjectId(req.userId) });
+    const user = await User.findById(req.userId);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
     // Verify current password
-    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    const isMatch = await user.comparePassword(currentPassword);
     if (!isMatch) {
       return res.status(400).json({ message: 'Current password is incorrect' });
     }
 
-    // Hash new password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(newPassword, salt);
-
     // Update password
-    await collection.updateOne(
-      { _id: new ObjectId(req.userId) },
-      { 
-        $set: { 
-          password: hashedPassword,
-          updatedAt: new Date()
-        } 
-      }
-    );
+    user.password = newPassword;
+    await user.save();
 
     res.json({ success: true });
   } catch (error) {

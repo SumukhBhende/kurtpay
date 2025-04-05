@@ -1,10 +1,11 @@
 import express from 'express';
+import bodyParser from 'body-parser';
 import cors from 'cors';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
+import mongoose from 'mongoose';
 import authRouter from './auth.js';
-import { MongoClient } from 'mongodb';
 
 dotenv.config();
 
@@ -25,7 +26,7 @@ app.use(cors({
 }));
 
 // Parse JSON bodies
-app.use(express.json());
+app.use(bodyParser.json());
 
 // Security headers
 app.use((req, res, next) => {
@@ -43,40 +44,26 @@ if (!mongoUri) {
   process.exit(1);
 }
 
-let client;
 let retryCount = 0;
 const MAX_RETRIES = 3;
 
 async function connectDB() {
   try {
-    if (!client) {
-      console.log('Creating new MongoDB client...');
-      client = new MongoClient(mongoUri, {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-        serverSelectionTimeoutMS: 5000
-      });
-    }
-
-    console.log('Connecting to local MongoDB...');
-    await client.connect();
+    console.log('Connecting to MongoDB...');
+    await mongoose.connect(mongoUri, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 5000
+    });
     
-    // Test the connection with explicit database selection
-    const db = client.db('ktkar');
-    await db.command({ ping: 1 });
-    console.log('Successfully connected to local MongoDB');
+    console.log('Successfully connected to MongoDB');
     
-    // Ensure maintron collection exists
-    const collections = await db.listCollections({ name: 'maintron' }).toArray();
-    if (collections.length === 0) {
-      console.log('Creating maintron collection...');
-      await db.createCollection('maintron');
-      console.log('Successfully created maintron collection');
-    } else {
-      console.log('Successfully accessed maintron collection');
-    }
+    // Test the connection
+    const db = mongoose.connection;
+    console.log('Database name:', db.name);
+    console.log('Collections:', await db.db.listCollections().toArray());
     
-    return client;
+    return mongoose.connection;
   } catch (error) {
     console.error('Error connecting to MongoDB:', {
       name: error.name,
@@ -86,8 +73,7 @@ async function connectDB() {
     });
     
     if (error.name === 'MongoServerSelectionError') {
-      console.error('Could not connect to local MongoDB. Please make sure MongoDB is running on your machine.');
-      console.error('Try running: mongod --dbpath /path/to/data/db');
+      console.error('Could not connect to MongoDB. Please make sure MongoDB is running.');
     }
     
     if (retryCount < MAX_RETRIES) {
@@ -103,10 +89,7 @@ async function connectDB() {
 
 // Connect to MongoDB before starting the server
 connectDB()
-  .then(mongoClient => {
-    // Make the client available to routes
-    app.locals.mongoClient = mongoClient;
-
+  .then(() => {
     // Routes
     app.use('/api', authRouter);
 
@@ -160,10 +143,8 @@ connectDB()
 // Handle process termination
 process.on('SIGINT', async () => {
   try {
-    if (client) {
-      await client.close();
-      console.log('MongoDB connection closed');
-    }
+    await mongoose.connection.close();
+    console.log('MongoDB connection closed');
     process.exit(0);
   } catch (error) {
     console.error('Error closing MongoDB connection:', error);
