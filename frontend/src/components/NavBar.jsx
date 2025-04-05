@@ -104,6 +104,7 @@ const Navbar = ({ onAuthClick, userData, onNavigate }) => {
           onClick={() => setToggle(!toggle)}
         />
 
+
         <div
           className={`${
             !toggle ? "hidden" : "flex"
